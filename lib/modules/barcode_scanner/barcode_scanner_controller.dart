@@ -57,11 +57,11 @@ class BarcodeScannerController{
 
       if (barcode != null && status.barcode.isEmpty) {
         status = BarcodeScannerStatus.barcode(barcode);
+        if(status.cameraController!= null)
         status.cameraController!.dispose();
       } else {
         getAvailableCameras();
        }
-        
               return;
             } catch (e) {
               print("ERRO DA LEITURA $e");
@@ -76,6 +76,7 @@ class BarcodeScannerController{
           }
         
           void listenCamera() {
+            if(status.cameraController!= null)
             if (status.cameraController!.value.isStreamingImages == false)
               status.cameraController!.startImageStream((cameraImage) async {
                 try {

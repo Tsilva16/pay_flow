@@ -19,6 +19,11 @@ class _BarcodeScannerPageState extends State<BarcodeScannerPage> {
   @override
   void initState() {
     controller.getAvaibleCameras();
+    controller.statusNotifier.addListener(() {
+      if(controller.status.hasBarcode){
+        Navigator.restorablePushReplacementNamed(context, "/insert_boleto");
+      }
+    });
     super.initState();
   }
 
