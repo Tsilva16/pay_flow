@@ -13,42 +13,39 @@ class BarcodeScannerController{
 
   final barcodeScanner = GoogleMlKit.vision.barcodeScanner();
 
+  InputImage? imagePicker;
+
+  CameraController? cameraController;
+
   void getAvaibleCameras() async {
     try{
       final response = await availableCameras();
       final camera = response.firstWhere(
         (element) => element.lensDirection == CameraLensDirection.back,
       );
-      final cameraController = CameraController(
+      cameraController = CameraController(
         camera,
         ResolutionPreset.max,
         enableAudio: false,
       );
-      await cameraController.initialize();
-      status = BarcodeScannerStatus.available(cameraController);
+      await cameraController!.initialize();
       scanWithCamera();
+      listenCamera();
     } catch (e) {
       status = BarcodeScannerStatus.error(e.toString());
     }
   }
 
   void scanWithCamera() {
-    Future.delayed(Duration(seconds: 10)).then((value) {
-      if (status.cameraController != null) {
-        if (status.cameraController!.value.isStreamingImages)
-          status.cameraController!.stopImageStream();
-      }
+    status = BarcodeScannerStatus.available();
+    Future.delayed(Duration(seconds: 20)).then((value) {
+      if(status.hasBarcode == false)
       status = BarcodeScannerStatus.error("Timeout de leitura de boleto");
     });
-    listenCamera();
   }
 
   Future<void> scannerBarCode(InputImage inputImage) async {
     try {
-      if (status.cameraController != null) {
-        if (status.cameraController!.value.isStreamingImages)
-          status.cameraController!.stopImageStream();
-      }
       final barcodes = await barcodeScanner.processImage(inputImage);
       var barcode;
       for (Barcode item in barcodes) {
@@ -57,11 +54,9 @@ class BarcodeScannerController{
 
       if (barcode != null && status.barcode.isEmpty) {
         status = BarcodeScannerStatus.barcode(barcode);
-        if(status.cameraController!= null)
-        status.cameraController!.dispose();
-      } else {
-        getAvailableCameras();
-       }
+        cameraController!.dispose();
+        await barcodeScanner.close();
+      } 
               return;
             } catch (e) {
               print("ERRO DA LEITURA $e");
@@ -69,17 +64,16 @@ class BarcodeScannerController{
           }
         
           void scanWithImagePicker() async {
-            await status.cameraController!.stopImageStream();
             final response = await ImagePicker().getImage(source: ImageSource.gallery);
             final inputImage = InputImage.fromFilePath(response!.path);
             scannerBarCode(inputImage);
           }
-        
+
           void listenCamera() {
-            if(status.cameraController!= null)
-            if (status.cameraController!.value.isStreamingImages == false)
-              status.cameraController!.startImageStream((cameraImage) async {
-                try {
+            if (cameraController!.value.isStreamingImages == false)
+              cameraController!.startImageStream((cameraImage) async {
+                if(status.stopScanner == false){
+                  try {
                   final WriteBuffer allBytes = WriteBuffer();
                   for (Plane plane in cameraImage.planes) {
                     allBytes.putUint8List(plane.bytes);
@@ -110,10 +104,10 @@ class BarcodeScannerController{
                   );
                   final inputImageCamera = InputImage.fromBytes(
                       bytes: bytes, inputImageData: inputImageData);
-                  await Future.delayed(Duration(seconds: 3));
-                  await scannerBarCode(inputImageCamera);
+                  scannerBarCode(inputImageCamera);
                 } catch (e) {
                   print(e);
+                }
                 }
               });
           }
@@ -122,7 +116,7 @@ class BarcodeScannerController{
             statusNotifier.dispose();
             barcodeScanner.close();
             if(status.showCamera){
-              status.cameraController!.dispose();
+              cameraController!.dispose();
             }
           }
         
