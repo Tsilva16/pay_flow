@@ -12,7 +12,7 @@ class AuthController{
     if(user != null){
       saveUser(user);
       _user = user;
-      Navigator.popAndPushNamed(context, "/home" );
+      Navigator.popAndPushNamed(context, "/home", arguments: user );
     } else {
       Navigator.popAndPushNamed(context, "/login");
     }
